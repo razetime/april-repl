@@ -9,6 +9,8 @@
 ]symbols - Help for symbols
 ]defns - All definitions in the current workspace so far
 ]save [file] - Save REPL history in 'file'. If unspecified, will save in temp.apl in the current folder.
+]load <file> - load an APL file into the REPL.
+]clear - Clear the current workspace.
 ]off - Close REPL.")
 (defconstant NL (format nil "~C" #\newline))
 (defconstant SYMS
@@ -66,20 +68,36 @@ Type ]help for help
 Type ]off to exit
   ")
 
+
 (loop while *running* 
   do (let ((input (read-line)))
-       (if (eql #\] (char input 0))
-           (cond  ((string= "]help"    input) (write-line HELP))
-                  ((string= "]symbols" input) (write-line SYMS))
-                  ((string= "]defns"   input) (write-line *defns*))
-                  ((string= "]off"     input) (write-line "Exiting April...") (setf *running* nil))
-                  ((string= "]save" (subseq input 0 5)) 
-                    (with-open-file (outfile (if (> (length input) 6) (subseq input 6) "temp.apl") :direction :output :if-does-not-exist :create :if-exists :supersede)
-                      (format outfile *defns*))) 
-                  (T (write-line "Invalid command")))
-           (handler-case 
-             (progn
-               (april:april-f input)
-               (if (find #\← input) (setf *defns* (concatenate 'string *defns* NL input))))
-             (ERROR (err) (format t "ERROR: ~a" err))))
-       (write-string (concatenate 'string NL "  "))))
+          (if (eql #\] (char input 0))
+              (cond ((string= "]help"    input) (write-line HELP))
+                    ((string= "]symbols" input) (write-line SYMS))
+                    ((string= "]defns"   input) (write-line *defns*))
+                    ((string= "]clear"   input) (april:april-clear-workspace common))
+                    ((string= "]off"     input) (write-line "Exiting April...") (setf *running* nil))
+                    ((string= "]save" (subseq input 0 5)) 
+                      (with-open-file (outfile (if (> (length input) 6) (subseq input 6) "temp.apl") :direction :output :if-does-not-exist :create :if-exists :supersede)
+                        (format outfile *defns*))) 
+                    ((string= "]load" (subseq input 0 5)) 
+                      (with-open-file (stream (subseq input 6))
+                        (loop for line = (read-line stream nil)
+                          while line do (april:april line))))
+                    (T (write-line "Invalid command")))
+              (handler-case
+                (progn
+                  (if (eql #\{ (char input (- (length input) 1))) 
+                      (let ((bal (count #\{ input)))
+                           (loop while (/= bal 0)
+                             do (let ((next-line (read-line)))
+                                     (progn
+                                       (setf input (concatenate 'string input NL next-line))
+                                      ;  (format T "Line given: ~a~a" next-line NL)
+                                       (setf bal (+ bal (april:april-c "{+/-/'{}'∘.=⍨⍵/⍨~≠\\''''=⍵}" next-line))))))))
+                  (april:april-f input)
+                  (if (find #\← input) (setf *defns* (concatenate 'string *defns* NL input))))
+                (ERROR (err) (format t "ERROR: ~a" err))))
+          (write-string (concatenate 'string NL "  "))))
+
+; {≠\''''=⍵} '{''{}{}''''dasdasdsa''}'
