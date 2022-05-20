@@ -80,10 +80,11 @@ Type ]off to exit
                     ((string= "]save" (subseq input 0 5)) 
                       (with-open-file (outfile (if (> (length input) 6) (subseq input 6) "temp.apl") :direction :output :if-does-not-exist :create :if-exists :supersede)
                         (format outfile *defns*))) 
-                    ((string= "]load" (subseq input 0 5)) 
-                      (with-open-file (stream (subseq input 6))
-                        (loop for line = (read-line stream nil)
-                          while line do (april:april line))))
+                    ((string= "]load" (subseq input 0 5)) (with-open-file (stream (subseq input 6))
+                      (april:april (let ((contents (make-string (file-length stream))))
+                        (read-sequence contents stream)
+                        (setf *defns* (concatenate 'string *defns* NL contents))
+                        contents))))
                     (T (write-line "Invalid command")))
               (handler-case
                 (progn
