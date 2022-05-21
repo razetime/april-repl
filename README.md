@@ -7,4 +7,3 @@ Make sure you have [quicklisp](https://www.quicklisp.org/) in order to load Apri
 Run with `rlwrap sbcl --load repl.lisp`. All testing for this REPL has been done on SBCL.
 
 Multiline definitions begin when you end a line with `{`, and they automatically end when all braces are closed.
-
